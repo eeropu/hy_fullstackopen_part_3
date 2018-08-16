@@ -3,6 +3,10 @@ const app = express()
 const bodyParser = require('body-parser')
 app.use(bodyParser.json())
 
+const morgan = require('morgan')
+morgan.token('body', function (req, res) { return JSON.stringify(req.body) })
+app.use(morgan(':method :url :body :status :res[content-length] - :response-time ms'))
+
 let persons = [
     {
         id: 1,
@@ -31,8 +35,6 @@ app.get('/api/persons', (req, res) => {
 })
 app.post('/api/persons', (req, res) => {
     const body = req.body
-
-    console.log(body)
 
     if(body.name === undefined || body.number === undefined) {
         return res.status(400).json({error: 'content missing'})
