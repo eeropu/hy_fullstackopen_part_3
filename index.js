@@ -1,15 +1,34 @@
+require('dotenv').load()
 const express = require('express')
 const app = express()
+
+//Use build folder for frontend
 app.use(express.static('build'))
+
+//Use body-parser
 const bodyParser = require('body-parser')
 app.use(bodyParser.json())
 
+//Logging
 const morgan = require('morgan')
 morgan.token('body', function (req, res) { return JSON.stringify(req.body) })
 app.use(morgan(':method :url :body :status :res[content-length] - :response-time ms'))
 
+//Enable CORS
 const cors = require('cors')
 app.use(cors())
+
+//Enable mongoose model
+const Person = require('./models/person')
+
+//Helper functions
+const formatPerson = (person) => {
+  return {
+    name: person.name,
+    number: person.number,
+    id: person._id
+  }
+}
 
 let persons = [
     {
@@ -35,7 +54,11 @@ let persons = [
 ]
 
 app.get('/api/persons', (req, res) => {
-    res.json(persons)
+  Person
+    .find({})
+    .then(result => {
+      res.json(result.map(Person.formatPerson))
+    })
 })
 app.post('/api/persons', (req, res) => {
     const body = req.body
@@ -46,26 +69,24 @@ app.post('/api/persons', (req, res) => {
         return res.status(400).json({error: 'name must be unique'})
     }
 
-    const person = {
-        id: Math.floor(Math.random() * 100000),
+    const person = new Person({
         name: body.name,
         number: body.number
-    }
+    })
 
-    persons = persons.concat(person)
-
-    res.json(person)
+    person
+      .save()
+      .then(newPerson => {
+        res.json(Person.formatPerson(newPerson))
+      })
 })
 
 app.get('/api/persons/:id', (req, res) => {
-    const id = Number(req.params.id)
-    const person = persons.find(person => person.id === id)
-
-    if(person) {
-        res.json(person)
-    } else {
-        res.status(404).end()
-    }
+    Person
+      .findById(req.params.id)
+      .then(person => {
+        res.json(Person.formatPerson(person))
+      })
 })
 
 app.delete('/api/persons/:id', (req, res) => {
