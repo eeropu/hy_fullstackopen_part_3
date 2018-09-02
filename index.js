@@ -30,29 +30,6 @@ const formatPerson = (person) => {
   }
 }
 
-let persons = [
-    {
-        id: 1,
-        name: 'Arto Hellas',
-        number: '040-123456'
-    },
-    {
-        id: 2,
-        name: 'Matti Tienari',
-        number: '040-123456'
-    },
-    {
-        id: 3,
-        name: 'Arto Järvinen',
-        number: '040-123456'
-    },
-    {
-        id: 4,
-        name: 'Lea Kutvonen',
-        number: '040-123456'
-    }
-]
-
 app.get('/api/persons', (req, res) => {
   Person
     .find({})
@@ -60,13 +37,12 @@ app.get('/api/persons', (req, res) => {
       res.json(result.map(Person.formatPerson))
     })
 })
+
 app.post('/api/persons', (req, res) => {
     const body = req.body
 
     if(body.name === undefined || body.number === undefined) {
         return res.status(400).json({error: 'content missing'})
-    } else if (persons.find(person => person.name === body.name)) {
-        return res.status(400).json({error: 'name must be unique'})
     }
 
     const person = new Person({
@@ -74,10 +50,19 @@ app.post('/api/persons', (req, res) => {
         number: body.number
     })
 
-    person
-      .save()
-      .then(newPerson => {
-        res.json(Person.formatPerson(newPerson))
+    Person
+      .find({name: body.name})
+      .then(found => {
+        if (found.length > 0) {
+          res.status(400).json({error: 'name must be unique'})
+        } else {
+          person
+            .save()
+            .then(formatPerson)
+            .then(newAndFormattedPerson => {
+              res.json(newAndFormattedPerson)
+            })
+        }
       })
 })
 
@@ -107,8 +92,9 @@ app.put('/api/persons/:id', (req, res) => {
 
   Person
     .findOneAndUpdate(req.params.id, person, {new: true})
-    .then(updatedPerson => {
-      res.json(Person.formatPerson(person))
+    .then(formatPerson)
+    .then(updatedAndFormattedPerson => {
+      res.json(updatedAndFormattedPerson)
     })
     .catch(error => {
       console.log(error)
@@ -131,7 +117,12 @@ app.delete('/api/persons/:id', (req, res) => {
 
 app.get('/api/info', (req, res) => {
     let date = new Date()
-    res.status(200).send(`Puhelinluettelossa on ${persons.length} henkilön tiedot <br><br>` + date)
+
+    Person
+      .find({})
+      .then(result => {
+        res.status(200).send(`Puhelinluettelossa on ${result.length} henkilön tiedot <br><br>` + date)
+      })
 })
 
 const PORT = process.env.PORT || 3001
